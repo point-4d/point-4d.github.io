@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point4D: Long-range 4D Motion Reconstruction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="assets/branding/point4d_favicon.svg">
+<link rel="icon" type="image/png" href="assets/branding/point4d_favicon.png">
+<style>
+  :root {
+    --accent: #1565c0;
+    --accent-light: #e3f2fd;
+    --orange: #e8710a;
+    --text: #222;
+    --text-sec: #555;
+    --text-dim: #888;
+    --bg: #fff;
+    --bg-alt: #f7f8fa;
+    --border: #e0e0e0;
+    --max-w: 960px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+  /* ═══ hero ═══ */
+  .hero { text-align: center; padding: 64px 24px 40px; border-bottom: 1px solid var(--border); }
+  .hero h1 { font-size: 2.3rem; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; }
+  .hero h1 .p4d { color: var(--accent); }
+  .hero .title-logo { height: 72px; display: block; margin: 0 auto; }
+  .hero .title-rest { display: block; margin-top: 10px; font-size: 1.55rem; font-weight: 700; color: var(--text); }
+  .h-logo { height: 1.05em; vertical-align: -0.14em; }
+  .hero .tagline { margin: 14px auto 0; max-width: 720px; font-size: 1.08rem; color: var(--text-sec); }
+  .hero-authors { margin-top: 22px; font-size: 0.98rem; }
+  .hero-authors a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--text-dim); }
+  .hero-authors a:hover { color: var(--accent); }
+  .hero-affiliations { margin-top: 6px; font-size: 0.88rem; color: var(--text-dim); }
+  .hero-venue { margin-top: 10px; font-size: 0.9rem; color: var(--accent); font-weight: 600; letter-spacing: 0.05em; }
+  .hero-links { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .hero-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 6px;
+    font-size: 0.85rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+    border: 1.5px solid var(--border); color: var(--text-sec); background: var(--bg);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .hero-btn:hover { background: var(--bg-alt); border-color: #bbb; color: var(--text); }
+  .hero-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .hero-btn.primary:hover { background: #0d47a1; }
+
+  /* ═══ nav ═══ */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 24px;
+  }
+  .nav-inner {
+    max-width: var(--max-w); margin: 0 auto;
+    display: flex; align-items: center; gap: 28px; height: 52px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  .nav-inner a { font-size: 0.9rem; font-weight: 600; color: var(--text-sec); text-decoration: none; white-space: nowrap; }
+  .nav-inner a:hover { color: var(--accent); }
+
+  /* ═══ sections ═══ */
+  section { padding: 48px 0 28px; }
+  section + section { border-top: 1px solid var(--border); }
+  #keyidea { border-top: none; }
+  h2 { font-size: 1.55rem; font-weight: 700; margin-bottom: 18px; }
+  h2 .num { color: var(--text-dim); font-weight: 600; margin-right: 8px; }
+  h3 { font-size: 1.1rem; font-weight: 700; margin: 26px 0 10px; }
+  p { margin: 0 0 14px; color: var(--text); }
+  .lead { font-size: 1.05rem; }
+  .muted { color: var(--text-sec); }
+  .caption { font-size: 0.85rem; color: var(--text-dim); text-align: center; margin: 10px auto 0; max-width: 780px; }
+
+  /* video / figure slots */
+  .media { border-radius: 8px; overflow: hidden; background: #0b0d12; box-shadow: 0 6px 22px rgba(20,30,60,.10); }
+  .media video, .media img { width: 100%; display: block; }
+  .placeholder {
+    border: 2px dashed var(--border); border-radius: 8px; background: var(--bg-alt);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 0.95rem; font-weight: 600;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* video controls (below video, RayRoPE style) */
+  .video-controls { display: flex; align-items: center; gap: 10px; padding: 8px 0; margin-top: 6px; }
+  .play-pause-btn {
+    background: none; border: none; color: var(--text-dim); font-size: 0.85rem;
+    cursor: pointer; padding: 0; display: flex; align-items: center; transition: color .2s;
+  }
+  .play-pause-btn:hover { color: var(--accent); }
+  .progress-container {
+    flex: 1; height: 4px; background: var(--border); border-radius: 2px;
+    cursor: pointer; position: relative;
+  }
+  .progress-bar {
+    height: 100%; background: var(--accent); border-radius: 2px; width: 0%;
+    position: relative; pointer-events: none;
+  }
+  .progress-bar::after {
+    content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+    width: 10px; height: 10px; background: var(--accent); border-radius: 50%;
+    opacity: 0; transition: opacity .2s;
+  }
+  .progress-container:hover .progress-bar::after,
+  .progress-container.dragging .progress-bar::after { opacity: 1; }
+  .time-display { font-size: 0.8rem; color: var(--text-dim); min-width: 84px; text-align: right; }
+
+  /* method labels above concatenated comparison videos */
+  .vid-labels { display: flex; margin-bottom: 4px; }
+  .vid-labels span { flex: 1; text-align: center; font-size: 0.85rem; font-weight: 700; color: var(--text-sec); }
+  .vid-labels span.ours { color: var(--accent); }
+  td.r1 { background: #ff9999; } td.r2 { background: #ffcc99; } td.r3 { background: #ffee99; }
+  .tbl-head { font-size: 1.0rem; font-weight: 700; margin: 4px 0 10px; }
+  table.compact { font-size: 0.84rem; max-width: 720px; margin-left: auto; margin-right: auto; }
+  table.compact th, table.compact td { padding: 5px 10px; }
+  table.compact td.m, table.compact th.m { text-align: right; }
+  table.compact td.grp { color: var(--text-dim); font-size: 0.76rem; font-weight: 700; text-align: center;
+    border-right: 1px solid var(--border); }
+
+  /* abstract toggle */
+  details.abstract { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-alt); padding: 0; }
+  details.abstract summary {
+    cursor: pointer; list-style: none; padding: 14px 18px;
+    font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;
+  }
+  details.abstract summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
+  details.abstract[open] summary::before { transform: rotate(90deg); }
+  details.abstract .body { padding: 0 20px 18px; color: var(--text-sec); }
+
+  .lead-question {
+    text-align: center; font-size: 1.45rem; font-weight: 700; color: var(--text);
+    margin: 26px auto 10px; max-width: 640px;
+  }
+  .lead-question::after { content: ""; display: block; width: 64px; height: 3px;
+    background: var(--accent); margin: 14px auto 0; border-radius: 2px; }
+
+  .answer-section { padding-top: 6px; }
+  .lead-answer {
+    text-align: center; font-size: 1.7rem; font-weight: 800; color: var(--accent);
+    margin: 18px auto 8px;
+  }
+  .lead-answer::after { content: ""; display: block; width: 64px; height: 3px;
+    background: var(--accent); margin: 14px auto 0; border-radius: 2px; }
+  .answer-sub { text-align: center; max-width: 760px; margin: 14px auto 0; }
+
+  /* motivation flow */
+  .flow { display: flex; flex-direction: column; gap: 0; margin: 22px 0 6px; }
+  .flow-step {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 14px 16px; border-radius: 8px;
+  }
+  .flow-step .idx {
+    flex: 0 0 30px; height: 30px; border-radius: 50%;
+    background: var(--accent-light); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; margin-top: 2px;
+  }
+  .flow-step.key .idx { background: var(--accent); color: #fff; }
+  .flow-step b { font-size: 1rem; }
+  .flow-step p { margin: 2px 0 0; font-size: 0.93rem; color: var(--text-sec); }
+  .flow-arrow { color: var(--text-dim); margin-left: 29px; line-height: 0.9; font-size: 1.05rem; }
+  .flow-step.key { background: var(--accent-light); border: 1px solid #bbdefb; }
+
+  /* results tabs */
+  .tabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 22px; }
+  .tabs button {
+    padding: 8px 22px; border: 0; background: var(--bg); cursor: pointer;
+    font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--text-sec);
+  }
+  .tabs button.active { background: var(--accent); color: #fff; }
+  .res-block { margin-top: 8px; }
+  .res-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .minitabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .minitabs button {
+    border: none; background: var(--bg-alt); color: var(--text-sec);
+    padding: 4px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .minitabs button.active { background: var(--accent); color: #fff; }
+  .carousel { display: flex; align-items: center; gap: 10px; }
+  .car-view { flex: 1; overflow: hidden; }
+  .car-track { display: flex; gap: 16px; transition: transform .38s ease; will-change: transform; }
+  .car-track { --vis: 2; }
+  .car-track .media { flex: 0 0 calc(100%/var(--vis) - 16px*(var(--vis) - 1)/var(--vis)); }
+  .car-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--border);
+    background: var(--bg-alt); color: var(--text-sec); font-size: 1.3rem; line-height: 1;
+    cursor: pointer; flex: none; transition: background .15s, color .15s;
+  }
+  .car-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .res-pane { display: none; }
+  .res-pane.active { display: block; }
+  .tabpane { display: none; }
+  .tabpane.active { display: block; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  /* tables (quantitative) */
+  table { border-collapse: collapse; width: 100%; font-size: 0.87rem; margin: 6px 0 8px; }
+  th, td { padding: 7px 12px; border-bottom: 1px solid var(--border); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { border-bottom: 2px solid var(--text); font-weight: 700; }
+  tr.ours { background: var(--accent-light); font-weight: 700; }
+  .tbl-note { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
+
+  /* gallery */
+  .gallery-card {
+    display: block; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    text-decoration: none; color: var(--text); background: var(--bg);
+    transition: box-shadow .15s, transform .15s;
+  }
+  .gallery-card:hover { box-shadow: 0 8px 24px rgba(20,30,60,.13); transform: translateY(-2px); }
+  .gallery-card .thumb { aspect-ratio: 16/9; background: var(--bg-alt); display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 0.85rem; }
+  .gallery-card .thumb video, .gallery-card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .gallery-card .label { padding: 9px 12px; font-size: 0.88rem; font-weight: 600; display: flex; justify-content: space-between; }
+  .gallery-card .label span.tag { color: var(--accent); font-weight: 700; font-size: 0.78rem; }
+
+  footer { border-top: 1px solid var(--border); padding: 36px 24px 48px; color: var(--text-dim); font-size: 0.85rem; }
+  pre.bibtex {
+    background: var(--bg-alt); border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px 18px; font-size: 0.8rem; overflow-x: auto; color: var(--text-sec);
+    line-height: 1.5; margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#overview">Overview</a>
+    <a href="#motivation">Motivation</a>
+    <a href="#keyidea">Key Idea</a>
+    <a href="#method">Method</a>
+    <a href="#results">Results</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>
+    <img class="title-logo" src="assets/branding/point4d_title.svg" alt="Point4D">
+    <span class="title-rest">Long-range 4D Motion Reconstruction</span>
+  </h1>
+  <div class="hero-authors">
+    <a href="https://msjeon.me/">Minsik Jeon</a>,
+    <a href="https://jaykarhade.github.io/">Jay Karhade</a>,
+    <a href="https://www.cs.cmu.edu/~deva/">Deva Ramanan</a><sup>&dagger;</sup>,
+    <a href="https://shubhtuls.github.io/">Shubham Tulsiani</a><sup>&dagger;</sup>
+  </div>
+  <div class="hero-affiliations">Carnegie Mellon University &nbsp;&middot;&nbsp; <sup>&dagger;</sup>Equal advising</div>
+  <div class="hero-links">
+    <a class="hero-btn primary" href="#">📄 Paper</a>
+    <a class="hero-btn" href="#">arXiv ↗</a>
+    <a class="hero-btn" href="#">Code ↗</a>
+  </div>
+</header>
+
+<!-- ═══════════════ NAV ═══════════════ -->
+
+<div class="wrap">
+
+<!-- ═══════════════ 1. OVERVIEW ═══════════════ -->
+<section id="overview">
+  <p class="lead">Point4D chains motion reconstruction across overlapping video chunks by
+  re-querying each predicted <b>3D endpoint</b> directly in the next chunk — no reprojection,
+  no matching — enabling robust 4D tracking over 300+ frames.</p>
+
+
+  <details class="abstract">
+      <summary>Abstract</summary>
+      <div class="body">
+        <p>We introduce Point4D, a feed-forward model for 4D reconstruction of long-range video
+        sequences. Point4D is able to reliably infer dense per-point 3D trajectories across
+        multi-hundred video sequences, unlike existing 4D methods that are limited to short input
+        windows of at most a few dozen frames. A key innovation that enables this is our flexible
+        3D query-based motion decoder that decouples trajectory prediction from image-plane
+        visibility. The predicted 3D endpoints are then directly re-queried in the next chunk
+        without re-projection or matching. Furthermore, we show that extracting and reusing a
+        visual descriptor from an arbitrary frame where the point is visible leads to superior
+        performance than purely relying on the source patch. Overall, Point4D achieves
+        state-of-the-art performance across diverse long-video tracking benchmarks spanning over
+        200 frames and substantially outperforms previous feed-forward 4D methods.</p>
+      </div>
+    </details>
+</section>
+
+
+
+<!-- ═══════════════ 3. MOTIVATION ═══════════════ -->
+<section id="motivation">
+  <h2>Motivation</h2>
+  <p class="lead-question">How can we reconstruct 4D motion on long videos?</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="idx">1</div>
+      <div><b>Chunk the video, chain the trajectories.</b>
+        <p>Transformer encoders cannot jointly process hundreds of frames — so process
+        overlapping chunks and stitch them, as long-video 3D reconstruction already does.</p>
+      </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+      <div class="idx">2</div>
+      <div><b>Chaining 4D requires autoregressive motion prediction.</b>
+        <p>Unlike static geometry, a point tracked in one chunk must be <i>queried again</i>
+        in the next chunk to continue its track.</p>
+      </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-step">
+      <div class="idx">3</div>
+      <div><b>2D pixel queries break at chunk boundaries.</b>
+        <p>Existing methods query 2D pixels to obtain 3D trajectories: re-querying requires
+        projecting the 3D endpoint back to a pixel — which fails when the point is occluded
+        or out of frame, exactly the situations that are routine in long videos.</p>
+      </div>
+    </div>
+    <div class="flow-arrow">↓</div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2. KEY IDEA ═══════════════ -->
+<section id="keyidea" class="answer-section">
+  <h2>Key Idea</h2>
+  <p class="lead-answer">Query Points, Not Pixels!</p>
+  <p class="lead answer-sub">With <b>3D points as queries</b>, each predicted endpoint is re-queried
+  directly in the next chunk — no reprojection, no matching, robust to occlusion and
+  out-of-view points.</p>
+</section>
+
+<!-- ═══════════════ 4. METHOD ═══════════════ -->
+<section id="method">
+  <h2>Method: Training <img class="h-logo" src="assets/branding/point4d_title.svg" alt="Point4D"></h2>
+
+  <!-- ▼ method video -->
+  <div class="custom-video-container" style="margin-top:14px;">
+    <div class="media">
+      <video id="method-video" src="assets/videos/model_video_final_cut.mp4" autoplay muted loop playsinline></video>
+    </div>
+    <div class="video-controls">
+      <button class="play-pause-btn" id="method-play-pause">❚❚</button>
+      <div class="progress-container" id="method-progress-container">
+        <div class="progress-bar" id="method-progress-bar"></div>
+      </div>
+      <span class="time-display" id="method-time-display">0:00 / 0:00</span>
+    </div>
+  </div>
+
+</section>
+
+<!-- ═══════════════ 5. RESULTS ═══════════════ -->
+<section id="results">
+  <h2>Results</h2>
+
+  <div class="res-block">
+    <h3 class="res-head">Long-video 4D tracking
+      <span class="minitabs" data-group="lv">
+        <button class="active" data-pane="lv-qual">Qualitative</button><button data-pane="lv-quant">Quantitative</button>
+      </span>
+    </h3>
+    <div class="res-pane active" id="lv-qual">
+      <p class="muted">Dense trajectories over hundreds of frames, chained across chunks —
+      Point4D vs baselines.</p>
+      <div class="carousel" id="lv-carousel">
+        <button class="car-btn" data-dir="-1" aria-label="Previous">‹</button>
+        <div class="car-view"><div class="car-track" data-visible="1"></div></div>
+        <button class="car-btn" data-dir="1" aria-label="Next">›</button>
+      </div>
+    </div>
+    <div class="res-pane" id="lv-quant">
+      <p class="muted">We compare Point4D with other feed-forward 4D reconstruction methods on
+      ~200-frame sequences (chunk 48 / overlap 8). While prior methods chain chunks by projecting
+      each 3D endpoint back to a 2D pixel for re-querying, <b>Point4D</b> re-queries its predicted
+      3D point directly. As shown below, Point4D outperforms all feed-forward baselines across
+      datasets and visibility conditions.</p>
+      <span class="minitabs" id="lv-dataset" style="margin-bottom:12px;">
+        <button class="active" data-ds="pointodyssey">PointOdyssey</button><button data-ds="dynamicreplica">Dynamic Replica</button><button data-ds="pstudio">Panoptic Studio</button>
+      </span>
+      <div class="media" style="background:#fff;">
+        <img id="lv-chart" src="assets/figures/longvideo_pointodyssey.png" alt="Long-video tracking metrics">
+      </div>
+      <p class="tbl-note">Iterative trackers (SpaTrackerV2, TAPIP3D) are compared in the paper —
+      Point4D outperforms or matches their accuracy while running an order of magnitude faster.
+      Full tables and additional datasets in the paper.</p>
+    </div>
+  </div>
+
+  <div class="res-block">
+    <h3 class="res-head">Single chunk tracking
+      <span class="minitabs" data-group="sc">
+        <button class="active" data-pane="sc-qual">Qualitative</button><button data-pane="sc-quant">Quantitative</button>
+      </span>
+    </h3>
+    <div class="res-pane active" id="sc-qual">
+      <p class="muted">Within a single chunk, 3D queries match 2D-query decoding on standard
+      short-range benchmarks.</p>
+      <div class="carousel" id="sc-carousel">
+        <button class="car-btn" data-dir="-1" aria-label="Previous">‹</button>
+        <div class="car-view"><div class="car-track"></div></div>
+        <button class="car-btn" data-dir="1" aria-label="Next">›</button>
+      </div>
+    </div>
+    <div class="res-pane" id="sc-quant">
+      <p style="text-align:center;font-size:0.98rem;margin:4px 0 10px;">Point4D performs comparably
+      within a single chunk (up to 64 frames) — its gains come from chaining.</p>
+      <table class="compact">
+        <thead>
+          <tr><th></th><th class="m">Method</th>
+              <th colspan="2">LSFOdyssey</th><th colspan="2">Dyn. Replica</th><th colspan="2">PStudio</th></tr>
+          <tr><th></th><th></th>
+              <th>EPE&darr;</th><th>APD&uarr;</th><th>EPE&darr;</th><th>APD&uarr;</th><th>EPE&darr;</th><th>APD&uarr;</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="grp">2D</td><td class="m">DA3 + CoTracker3</td>
+              <td>0.50</td><td>0.69</td><td>0.11</td><td>0.89</td><td>0.33</td><td>0.63</td></tr>
+          <tr><td class="grp" rowspan="2">Iter.</td><td class="m">TAPIP3D</td>
+              <td>0.35</td><td>0.66</td><td>0.87</td><td>0.50</td><td>0.30</td><td>0.65</td></tr>
+          <tr><td class="m">SpatialTrackerV2</td>
+              <td>0.34</td><td>0.68</td><td>0.69</td><td>0.62</td><td class="r2">0.21</td><td class="r2">0.75</td></tr>
+          <tr><td class="grp" rowspan="5">FF</td><td class="m">St4RTrack</td>
+              <td>0.56</td><td>0.48</td><td>0.17</td><td>0.81</td><td>0.41</td><td>0.53</td></tr>
+          <tr><td class="m">Trace Anything</td>
+              <td>0.76</td><td>0.42</td><td>0.34</td><td>0.66</td><td>0.25</td><td>0.72</td></tr>
+          <tr><td class="m">Any4D</td>
+              <td class="r3">0.27</td><td>0.72</td><td class="r1">0.07</td><td class="r2">0.93</td><td>0.28</td><td>0.66</td></tr>
+          <tr><td class="m">V-DPM</td>
+              <td class="r1">0.14</td><td class="r2">0.85</td><td>0.14</td><td>0.84</td><td class="r1">0.17</td><td class="r1">0.79</td></tr>
+          <tr><td class="m">4RC</td>
+              <td class="r2">0.16</td><td class="r1">0.87</td><td class="r1">0.07</td><td class="r1">0.95</td><td>0.29</td><td>0.66</td></tr>
+          <tr class="ours"><td class="grp"></td><td class="m"><b>Point4D (Ours)</b></td>
+              <td class="r3">0.27</td><td class="r3">0.73</td><td class="r2">0.09</td><td class="r3">0.91</td><td class="r3">0.23</td><td class="r3">0.73</td></tr>
+        </tbody>
+      </table>
+      <p class="tbl-note" style="text-align:center;">EPE (&darr;) and APD (&uarr;);
+      <span style="background:#ff9999;padding:0 6px;border-radius:3px;">1st</span>
+      <span style="background:#ffcc99;padding:0 6px;border-radius:3px;">2nd</span>
+      <span style="background:#ffee99;padding:0 6px;border-radius:3px;">3rd</span>.</p>
+    </div>
+  </div>
+
+  <div class="res-block">
+    <h3 class="res-head">Long-horizon stability</h3>
+    <p class="muted">Per-chunk trajectory error as the video progresses — Point4D's (<span style="color:#d62728;font-weight:600;">red plot</span>) error grows
+    slowest across chunk boundaries.</p>
+    <div class="grid2">
+      <div>
+        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_dynamic_replica_eval.png" alt="Per-chunk EPE/APD on Dynamic Replica"></div>
+        <p class="caption" style="text-align:center;">^ Dynamic Replica (200 frames)</p>
+      </div>
+      <div>
+        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_tapvid3d_pstudio.png" alt="Per-chunk EPE/APD on Panoptic Studio"></div>
+        <p class="caption" style="text-align:center;">^ Panoptic Studio (150 frames)</p>
+      </div>
+    </div>
+    <p class="caption">Per-chunk EPE (↓) and APD (↑); chunk 48 / overlap 8.</p>
+  </div>
+</section>
+
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="wrap">
+    <b style="color: var(--text);">BibTeX</b>
+    <pre class="bibtex">@inproceedings{point4d2026,
+  title     = {Point4D: Long-range 4D Motion Reconstruction},
+  author    = {Jeon, Minsik and Karhade, Jay and Ramanan, Deva and Tulsiani, Shubham},
+  booktitle = {Under review},
+  year      = {2026}
+}</pre>
+    <p style="margin-top:18px;">Template inspired by
+    <a href="https://junwon.me/StressDream/" style="color:var(--text-sec);">StressDream</a>.</p>
+  </div>
+</footer>
+
+<script>
+  // circular video carousels (videos created once -> playback never resets while sliding)
+  function setupCarousel(rootSel, vids, visible, opts = {}) {
+    const track = document.querySelector(rootSel + ' .car-track');
+    if (!track) return;
+    track.style.setProperty('--vis', visible);
+    const items = vids.concat(vids.slice(0, visible));   // clones for the wrap-around
+    for (const name of items) {
+      const d = document.createElement('div'); d.className = 'media';
+      let html = '';
+      if (opts.labels) {
+        html += '<div class="vid-labels" style="padding:6px 0 2px;background:#fff;">'
+          + opts.labels.map(l => `<span${l.includes('Ours') ? ' class="ours"' : ''}>${l}</span>`).join('')
+          + '</div>';
+      }
+      html += `<video src="assets/videos/${name}.mp4" autoplay muted loop playsinline></video>`;
+      if (opts.controls) {
+        html += `<div class="video-controls" style="padding:8px 12px;background:#fff;">
+          <button class="play-pause-btn">❚❚</button>
+          <div class="progress-container"><div class="progress-bar"></div></div>
+          <span class="time-display">0:00 / 0:00</span></div>`;
+      }
+      d.innerHTML = html;
+      if (opts.controls) wireVideoControls(d);
+      track.appendChild(d);
+    }
+    const n = vids.length;
+    let idx = 0, busy = false;
+    const step = () => track.children[0].getBoundingClientRect().width + 16;
+    const setX = (i, animate) => {
+      track.style.transition = animate ? '' : 'none';
+      track.style.transform = `translateX(${-i * step()}px)`;
+      if (!animate) track.getBoundingClientRect();   // flush so the next move animates
+    };
+    track.addEventListener('transitionend', () => {
+      if (idx >= n) { idx -= n; setX(idx, false); }
+      busy = false;
+    });
+    document.querySelectorAll(rootSel + ' .car-btn').forEach(b =>
+      b.addEventListener('click', () => {
+        if (busy) return; busy = true;
+        const dir = +b.dataset.dir;
+        if (dir < 0 && idx === 0) { idx = n; setX(idx, false); }   // jump to clone zone, then slide back
+        idx += dir;
+        requestAnimationFrame(() => setX(idx, true));
+      }));
+    window.addEventListener('resize', () => setX(idx, false));
+    setX(0, false);
+    document.querySelectorAll(rootSel + ' .car-btn').forEach(b => b._wired = true);
+  }
+  // element-based variant of the player wiring (for carousel-created videos)
+  function wireVideoControls(root) {
+    const video = root.querySelector('video');
+    const btn = root.querySelector('.play-pause-btn');
+    const container = root.querySelector('.progress-container');
+    const bar = root.querySelector('.progress-bar');
+    const timeEl = root.querySelector('.time-display');
+    const fmt = t => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
+    const updateIcon = () => { btn.textContent = video.paused ? '▶' : '❚❚'; };
+    const updateProgress = () => {
+      if (!video.duration) return;
+      bar.style.width = (video.currentTime / video.duration * 100) + '%';
+      timeEl.textContent = `${fmt(video.currentTime)} / ${fmt(video.duration)}`;
+    };
+    btn.addEventListener('click', () => { video.paused ? video.play() : video.pause(); });
+    let dragging = false;
+    const seek = x => {
+      if (!video.duration) return;
+      const r = container.getBoundingClientRect();
+      video.currentTime = Math.max(0, Math.min(1, (x - r.left) / r.width)) * video.duration;
+      updateProgress();
+    };
+    container.addEventListener('mousedown', e => { e.preventDefault(); dragging = true; container.classList.add('dragging'); seek(e.clientX); });
+    document.addEventListener('mousemove', e => { if (dragging) { e.preventDefault(); seek(e.clientX); } });
+    document.addEventListener('mouseup', () => { if (dragging) { dragging = false; container.classList.remove('dragging'); } });
+    container.addEventListener('touchstart', e => { dragging = true; seek(e.touches[0].clientX); }, { passive: true });
+    document.addEventListener('touchmove', e => { if (dragging) seek(e.touches[0].clientX); }, { passive: true });
+    document.addEventListener('touchend', () => { dragging = false; });
+    video.addEventListener('timeupdate', updateProgress);
+    video.addEventListener('play', updateIcon);
+    video.addEventListener('pause', updateIcon);
+    video.addEventListener('loadedmetadata', updateProgress);
+  }
+
+  setupCarousel('#sc-carousel', ['dog', 'bear', 'stroller'], 2);
+  setupCarousel('#lv-carousel', ['long_bouldering_2', 'long_robot_dog', 'long_robot_walk'], 1,
+                { controls: true, labels: ['SpaTrackerV2', '4RC', 'Point4D (Ours)'] });
+
+  // long-video quantitative: dataset toggle swaps the chart image
+  document.querySelectorAll('#lv-dataset button').forEach(btn =>
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#lv-dataset button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('lv-chart').src = `assets/figures/longvideo_${btn.dataset.ds}.png`;
+    }));
+
+  // per-subsection qualitative/quantitative mini tabs
+  document.querySelectorAll('.minitabs').forEach(mt => {
+    mt.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      if (!btn.dataset.pane) return;   // e.g. the dataset toggle — handled separately
+      mt.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      mt.closest('.res-block').querySelectorAll('.res-pane').forEach(p => p.classList.remove('active'));
+      document.getElementById(btn.dataset.pane).classList.add('active');
+    }));
+  });
+  // custom video player (RayRoPE style: controls below the video)
+  function setupVideoPlayer(videoId, btnId, containerId, barId, timeId) {
+    const video = document.getElementById(videoId);
+    const btn = document.getElementById(btnId);
+    const container = document.getElementById(containerId);
+    const bar = document.getElementById(barId);
+    const timeEl = document.getElementById(timeId);
+    if (!video || !btn || !container || !bar || !timeEl) return;
+    video.playbackRate = 1.2;
+    const fmt = t => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
+    const updateIcon = () => { btn.textContent = video.paused ? '\u25B6' : '\u275A\u275A'; };
+    const updateProgress = () => {
+      if (!video.duration) return;
+      bar.style.width = (video.currentTime / video.duration * 100) + '%';
+      timeEl.textContent = `${fmt(video.currentTime)} / ${fmt(video.duration)}`;
+    };
+    btn.addEventListener('click', () => { video.paused ? video.play() : video.pause(); });
+    let dragging = false;
+    const seek = clientX => {
+      if (!video.duration) return;
+      const r = container.getBoundingClientRect();
+      video.currentTime = Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * video.duration;
+      updateProgress();
+    };
+    container.addEventListener('mousedown', e => { e.preventDefault(); dragging = true; container.classList.add('dragging'); seek(e.clientX); });
+    document.addEventListener('mousemove', e => { if (dragging) { e.preventDefault(); seek(e.clientX); } });
+    document.addEventListener('mouseup', () => { if (dragging) { dragging = false; container.classList.remove('dragging'); } });
+    container.addEventListener('touchstart', e => { dragging = true; container.classList.add('dragging'); seek(e.touches[0].clientX); }, { passive: true });
+    document.addEventListener('touchmove', e => { if (dragging) seek(e.touches[0].clientX); }, { passive: true });
+    document.addEventListener('touchend', () => { dragging = false; container.classList.remove('dragging'); });
+    video.addEventListener('timeupdate', updateProgress);
+    video.addEventListener('play', updateIcon);
+    video.addEventListener('pause', updateIcon);
+    video.addEventListener('loadedmetadata', updateProgress);
+  }
+  setupVideoPlayer('method-video', 'method-play-pause', 'method-progress-container', 'method-progress-bar', 'method-time-display');
+
+</script>
+</body>
+</html>
