@@ -278,6 +278,17 @@
   re-querying each predicted <b>3D endpoint</b> directly in the next chunk — no reprojection,
   no matching — enabling robust 4D tracking over 300+ frames.</p>
 
+  <!-- ▼ intro video: motivation → key idea → results -->
+  <div id="overview-player" style="margin-top:18px;">
+    <div class="media"><video src="assets/videos/overview_slide.mp4" autoplay muted loop playsinline></video></div>
+    <div class="video-controls">
+      <button class="play-pause-btn">❚❚</button>
+      <div class="progress-container"><div class="progress-bar"></div></div>
+      <span class="time-display">0:00 / 0:00</span>
+    </div>
+  </div>
+  <p class="caption">One-minute introduction: why long-video 4D reconstruction breaks with 2D
+  queries, our 3D-query decoder, and long-range tracking results.</p>
 
   <details class="abstract">
       <summary>Abstract</summary>
@@ -570,6 +581,8 @@
     video.addEventListener('pause', updateIcon);
     video.addEventListener('loadedmetadata', updateProgress);
   }
+  // overview intro video (seek bar via the shared control wiring)
+  wireVideoControls(document.getElementById('overview-player'));
 
   setupCarousel('#sc-carousel', ['dog', 'bear', 'stroller'], 2);
   setupCarousel('#lv-carousel', ['long_bouldering_2', 'long_robot_dog', 'long_robot_walk'], 1,
