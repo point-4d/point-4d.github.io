@@ -182,6 +182,8 @@
   .res-block { margin-top: 8px; }
   .res-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   #idea-tabs { display: flex; width: 100%; }
+  .idea-sub { margin: 18px 0 10px; font-size: 1.12rem; line-height: 1.5;
+              font-weight: 600; color: var(--text); }
   #idea-tabs button { flex: 1; padding: 8px 10px; font-size: 0.88rem; }
   .minitabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
   .minitabs button {
@@ -289,8 +291,6 @@
       <span class="time-display">0:00 / 0:00</span>
     </div>
   </div>
-  <p class="caption">Why long-video 4D reconstruction breaks with 2D queries, our 3D-query
-  decoder, and long-range tracking results.</p>
 
   <details class="abstract">
       <summary>Abstract</summary>
@@ -317,16 +317,15 @@
   <h2>Point4D queries 3D points, not 2D pixels</h2>
   <span class="minitabs" id="idea-tabs" style="margin-top:16px;">
     <button data-clip="motiv_long3d" class="active">Chunk &amp; chain works for 3D</button>
-    <button data-clip="motiv_2d">2D queries break the chain</button>
+    <button data-clip="motiv_2d">For 4D, 2D queries break the chain</button>
     <button data-clip="motiv_3d">3D queries keep it</button>
   </span>
 
-  <div class="media" id="idea-stage" style="margin-top:12px;background:#fff;">
-    <video id="idea-video" src="assets/videos/motiv_long3d.mp4" autoplay muted loop playsinline></video>
+  <p class="idea-sub" id="idea-caption">Long 3D reconstruction already chunks a video and aligns
+  the pieces. Can 4D be chained the same way?</p>
+  <div class="media" id="idea-stage" style="background:#fff;">
+    <video id="idea-video" src="assets/videos/motiv_long3d.mp4" autoplay muted playsinline></video>
   </div>
-  <p class="caption" id="idea-caption">Long 3D reconstruction already chunks a video and aligns the pieces.
-  Can 4D be chained the same way? A trajectory has to continue across the seam, which alignment
-  alone cannot do.</p>
 </section>
 
 <!-- ═══════════════ 4. METHOD ═══════════════ -->
@@ -610,20 +609,21 @@
     const cap = document.getElementById('idea-caption');
     if (!tabs || !vid) return;
     const captions = {
-      motiv_long3d: 'Long 3D reconstruction already chunks a video and aligns the pieces. Can 4D be '
-                  + 'chained the same way? A trajectory has to continue across the seam, which '
-                  + 'alignment alone cannot do.',
-      motiv_2d: 'A 2D-query method must project its predicted 3D endpoint back to a pixel to '
-              + 're-query it. When the runner passes behind the column that pixel lands on the '
-              + 'wrong surface, and the track follows the column instead.',
-      motiv_3d: 'Point4D hands the predicted 3D point straight to the next chunk. Nothing is '
-              + 'projected, so occlusion and leaving the frame no longer break the chain.',
+      motiv_long3d: 'Long 3D reconstruction already chunks a video and aligns the pieces. '
+                  + 'Can 4D be chained the same way?',
+      motiv_2d: 'Re-querying a 2D pixel fails the moment the point is occluded — the track '
+              + 'follows the column instead of the runner.',
+      motiv_3d: 'Point4D hands the predicted 3D point straight to the next chunk, so occlusion '
+              + 'and leaving the frame no longer break the chain.',
     };
     tabs.addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
       tabs.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      vid.src = 'assets/videos/' + b.dataset.clip + '.mp4';
+      const next = 'assets/videos/' + b.dataset.clip + '.mp4';
+      // re-selecting the same tab replays it from the start
+      if (vid.getAttribute('src') === next) vid.currentTime = 0;
+      else vid.setAttribute('src', next);
       vid.play().catch(() => {});
       cap.textContent = captions[b.dataset.clip];
     });
