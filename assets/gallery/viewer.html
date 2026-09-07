@@ -212,7 +212,11 @@ function setFrame(t) {
   const pc = S.pg.attributes.color.array;
   for (let i = 0; i < d.n * 3; i++) pc[i] = d.c[i] / 255;
   S.pg.setDrawRange(0, d.n);
-  S.pg.attributes.position.needsUpdate = S.pg.attributes.color.needsUpdate = true;
+  for (const at of [S.pg.attributes.position, S.pg.attributes.color]) {
+    at.updateRange.offset = 0;
+    at.updateRange.count = d.n * 3;
+    at.needsUpdate = true;
+  }
   const N = S.N, traj = S.traj, hcol = S.hcol;
   const W = +el('trail').value, t0 = W > 0 ? Math.max(0, t - W) : 0;
   const lp = S.lg.attributes.position.array, lc = S.lg.attributes.color.array;
@@ -235,9 +239,17 @@ function setFrame(t) {
     }
   }
   S.lg.setDrawRange(0, s * 2);
-  S.lg.attributes.position.needsUpdate = S.lg.attributes.color.needsUpdate = true;
+  for (const at of [S.lg.attributes.position, S.lg.attributes.color]) {
+    at.updateRange.offset = 0;
+    at.updateRange.count = s * 6;
+    at.needsUpdate = true;
+  }
   S.cg.setDrawRange(0, nc);
-  S.cg.attributes.position.needsUpdate = S.cg.attributes.color.needsUpdate = true;
+  for (const at of [S.cg.attributes.position, S.cg.attributes.color]) {
+    at.updateRange.offset = 0;
+    at.updateRange.count = nc * 3;
+    at.needsUpdate = true;
+  }
 }
 
 async function selectScene(id) {
@@ -261,8 +273,9 @@ async function selectScene(id) {
   const pMat = new THREE.PointsMaterial({ size: +el('dsize').value, vertexColors: true, sizeAttenuation: false });
   const pts = new THREE.Points(pg, pMat);
   const lg = new THREE.BufferGeometry();
-  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * T * 6), 3));
-  lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * T * 6), 3));
+  const trailCap = N * (+el('trail').max) * 6;
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(trailCap), 3));
+  lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(trailCap), 3));
   const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true }));
   const cg = new THREE.BufferGeometry();
   cg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
