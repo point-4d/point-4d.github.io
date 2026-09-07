@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point4D — Interactive 4D Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --accent:#1565c0; --accent-light:#e3f2fd; --border:#e0e0e0; --dim:#888; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; background:#fff; font-family:'Noto Sans',system-ui,sans-serif; overflow:hidden; }
+  #app { display:flex; height:100vh; }
+
+  /* ── left: scene list ── */
+  #side { width:200px; flex:none; border-right:1px solid var(--border); overflow-y:auto;
+          padding:14px 12px; background:#fafbfc; }
+  #side h1 { font-size:0.95rem; font-weight:700; color:#333; margin-bottom:12px; }
+  .scene { display:block; width:100%; border:2px solid transparent; border-radius:8px;
+           overflow:hidden; cursor:pointer; margin-bottom:12px; background:#fff;
+           box-shadow:0 1px 4px rgba(0,0,0,.08); transition:border-color .15s, box-shadow .15s; }
+  .scene img { width:100%; display:block; }
+  .scene .nm { padding:6px 9px; font-size:0.8rem; font-weight:600; color:#444; text-align:left; }
+  .scene:hover { box-shadow:0 4px 12px rgba(20,30,60,.15); }
+  .scene.active { border-color:var(--accent); }
+  .scene.active .nm { color:var(--accent); }
+
+  /* ── right: viewer ── */
+  #main { flex:1; position:relative; }
+  #c { display:block; width:100%; height:100%; }
+  #hint { position:absolute; top:14px; left:16px; font-size:0.8rem; color:var(--dim); transition:opacity 1s; }
+
+  /* toolbar */
+  #tools { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.95);
+           border:1px solid var(--border); border-radius:8px; padding:10px 14px;
+           font-size:0.8rem; color:#444; box-shadow:0 4px 14px rgba(0,0,0,.08); }
+  #tools .row { display:flex; align-items:center; gap:8px; margin:5px 0; }
+  #tools .row span.lb { width:92px; }
+  #tools input[type=range] { width:96px; accent-color:var(--accent); }
+  #tools input[type=checkbox] { accent-color:var(--accent); }
+  #tools .val { width:20px; text-align:right; color:var(--dim); }
+
+  /* playbar */
+  #bar { position:absolute; left:0; right:0; bottom:0; padding:10px 18px 14px;
+         background:linear-gradient(transparent, rgba(255,255,255,.95) 40%);
+         display:flex; align-items:center; gap:12px; }
+  #play { background:none; border:none; color:#555; font-size:0.95rem; cursor:pointer; width:26px; }
+  #play:hover { color:var(--accent); }
+  #prog { flex:1; height:4px; background:var(--border); border-radius:2px; cursor:pointer; }
+  #pbar { height:100%; background:var(--accent); border-radius:2px; width:0%; pointer-events:none; position:relative; }
+  #pbar::after { content:""; position:absolute; right:-5px; top:50%; transform:translateY(-50%);
+    width:10px; height:10px; background:var(--accent); border-radius:50%; opacity:0; transition:opacity .2s; }
+  #prog:hover #pbar::after, #prog.drag #pbar::after { opacity:1; }
+  #ftxt { font-size:0.8rem; color:var(--dim); min-width:70px; text-align:right; }
+
+  #load { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+          flex-direction:column; gap:10px; color:var(--dim); font-size:0.9rem;
+          background:rgba(255,255,255,.9); z-index:5; }
+  .spin { width:26px; height:26px; border:3px solid var(--border); border-top-color:var(--accent);
+          border-radius:50%; animation:sp 0.9s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1>Point4D scenes</h1>
+    <!-- scene cards injected -->
+  </div>
+  <div id="main">
+    <canvas id="c"></canvas>
+    <div id="hint">drag to rotate &middot; scroll to zoom &middot; space to play/pause</div>
+    <div id="tools">
+      <div class="row"><span class="lb">Trail length</span><input id="trail" type="range" min="0" max="60"><span class="val" id="trailv"></span></div>
+      <div class="row"><span class="lb">Depth pt size</span><input id="dsize" type="range" min="1" max="5" value="2"><span class="val" id="dsizev">2</span></div>
+      <div class="row"><span class="lb">Track pt size</span><input id="tsize" type="range" min="2" max="10" value="6"><span class="val" id="tsizev">6</span></div>
+      <div class="row"><label><input id="showpts" type="checkbox" checked> Depth points</label></div>
+      <div class="row"><label><input id="showtraj" type="checkbox" checked> Trajectories</label></div>
+    </div>
+    <div id="load"><div class="spin"></div><span id="loadtxt">loading…</span></div>
+    <div id="bar">
+      <button id="play">❚❚</button>
+      <div id="prog"><div id="pbar"></div></div>
+      <span id="ftxt"></span>
+    </div>
+  </div>
+</div>
+<script>
+const SCENES = [
+  { id: 'cat_jumping',  name: 'Cat jumping' },
+  { id: 'bouldering_2', name: 'Bouldering' },
+];
+const el = id => document.getElementById(id);
+
+// ── sidebar ──
+const side = el('side');
+for (const s of SCENES) {
+  const b = document.createElement('button');
+  b.className = 'scene'; b.id = 'sc-' + s.id;
+  b.innerHTML = `<img src="thumbs/${s.id}.jpg" alt=""><div class="nm">${s.name}</div>`;
+  b.onclick = () => selectScene(s.id);
+  side.appendChild(b);
+}
+
+// ── three.js (one renderer/scene, buffers rebuilt per scene) ──
+const canvas = el('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+const scene3 = new THREE.Scene(); scene3.background = new THREE.Color(0xffffff);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
+camera.up.set(0, -1, 0);
+const controls = new THREE.OrbitControls(camera, canvas);
+let objs = [];   // current scene's three objects
+
+function f16to32(u16arr) {
+  const o = new Float32Array(u16arr.length);
+  for (let i = 0; i < u16arr.length; i++) {
+    const h = u16arr[i], sg = (h >> 15) & 1, e = (h >> 10) & 31, m = h & 1023;
+    o[i] = e === 0 ? (sg ? -1 : 1) * 5.9604644775390625e-8 * m
+         : e === 31 ? (m ? NaN : (sg ? -1 : 1) * Infinity)
+         : (sg ? -1 : 1) * Math.pow(2, e - 15) * (1 + m / 1024);
+  }
+  return o;
+}
+
+const cache = {};          // seq id -> {hdr, buf}
+async function fetchScene(id) {
+  if (cache[id]) return cache[id];
+  const hdr = await (await fetch(id + '.json')).json();
+  const resp = await fetch(id + '.bin');
+  const total = +resp.headers.get('Content-Length') || 0;
+  const reader = resp.body.getReader();
+  const parts = []; let got = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length;
+    if (total) el('loadtxt').textContent = `loading… ${(got / total * 100).toFixed(0)}%`;
+  }
+  const u8 = new Uint8Array(got); let o = 0;
+  for (const p of parts) { u8.set(p, o); o += p.length; }
+  cache[id] = { hdr, buf: u8.buffer };
+  return cache[id];
+}
+
+let S = null;              // active scene state
+let frame = 0, playing = true, timer = null;
+
+function setFrame(t) {
+  if (!S) return;
+  frame = t;
+  el('pbar').style.width = (t / (S.T - 1) * 100) + '%';
+  el('ftxt').textContent = `${t + 1} / ${S.T}`;
+  const d = S.frameData(t);
+  S.pg.attributes.position.array.set(d.p.subarray(0, d.n * 3));
+  const pc = S.pg.attributes.color.array;
+  for (let i = 0; i < d.n * 3; i++) pc[i] = d.c[i] / 255;
+  S.pg.setDrawRange(0, d.n);
+  S.pg.attributes.position.needsUpdate = S.pg.attributes.color.needsUpdate = true;
+  const N = S.N, traj = S.traj, hcol = S.hcol;
+  const W = +el('trail').value, t0 = W > 0 ? Math.max(0, t - W) : 0;
+  const lp = S.lg.attributes.position.array, lc = S.lg.attributes.color.array;
+  const cp = S.cg.attributes.position.array, cc = S.cg.attributes.color.array;
+  let s = 0, nc = 0;
+  for (let i = 0; i < N; i++) {
+    const r = hcol[i * 3] / 255, g = hcol[i * 3 + 1] / 255, b = hcol[i * 3 + 2] / 255;
+    const o2 = (t * N + i) * 3;
+    if (traj[o2] || traj[o2 + 1] || traj[o2 + 2]) {
+      cp[nc * 3] = traj[o2]; cp[nc * 3 + 1] = traj[o2 + 1]; cp[nc * 3 + 2] = traj[o2 + 2];
+      cc[nc * 3] = r; cc[nc * 3 + 1] = g; cc[nc * 3 + 2] = b; nc++;
+    }
+    for (let k = t0; k < t; k++) {
+      const A = (k * N + i) * 3, B = ((k + 1) * N + i) * 3;
+      lp[s * 6] = traj[A]; lp[s * 6 + 1] = traj[A + 1]; lp[s * 6 + 2] = traj[A + 2];
+      lp[s * 6 + 3] = traj[B]; lp[s * 6 + 4] = traj[B + 1]; lp[s * 6 + 5] = traj[B + 2];
+      for (let q = 0; q < 2; q++) { lc[s * 6 + q * 3] = r; lc[s * 6 + q * 3 + 1] = g; lc[s * 6 + q * 3 + 2] = b; }
+      s++;
+    }
+  }
+  S.lg.setDrawRange(0, s * 2);
+  S.lg.attributes.position.needsUpdate = S.lg.attributes.color.needsUpdate = true;
+  S.cg.setDrawRange(0, nc);
+  S.cg.attributes.position.needsUpdate = S.cg.attributes.color.needsUpdate = true;
+}
+
+async function selectScene(id) {
+  document.querySelectorAll('.scene').forEach(b => b.classList.remove('active'));
+  el('sc-' + id).classList.add('active');
+  el('load').style.display = 'flex'; el('loadtxt').textContent = 'loading…';
+  stop();
+  const { hdr, buf } = await fetchScene(id);
+  for (const o of objs) { scene3.remove(o); o.geometry.dispose(); }
+  objs = [];
+  const T = hdr.T, N = hdr.N, counts = hdr.counts;
+  const frames = []; let off = 0;
+  for (let t = 0; t < T; t++) { const n = counts[t]; frames.push({ n, pOff: off, cOff: off + n * 6 }); off += n * 9; }
+  const traj = f16to32(new Uint16Array(buf, off, T * N * 3)); off += T * N * 3 * 2;
+  const hcol = new Uint8Array(buf, off, N * 3);
+  let maxn = 0; for (const c of counts) maxn = Math.max(maxn, c);
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxn * 3), 3));
+  pg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(maxn * 3), 3));
+  const pMat = new THREE.PointsMaterial({ size: +el('dsize').value, vertexColors: true, sizeAttenuation: false });
+  const pts = new THREE.Points(pg, pMat);
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * T * 6), 3));
+  lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * T * 6), 3));
+  const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true }));
+  const cg = new THREE.BufferGeometry();
+  cg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  cg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+  const cMat = new THREE.PointsMaterial({ size: +el('tsize').value, vertexColors: true, sizeAttenuation: false });
+  const cur = new THREE.Points(cg, cMat);
+  scene3.add(pts); scene3.add(lines); scene3.add(cur);
+  objs = [pts, lines, cur];
+  const fCache = {};
+  S = { T, N, traj, hcol, pg, lg, cg, pMat, cMat, pts, lines, cur,
+        frameData: t => {
+          if (fCache[t]) return fCache[t];
+          const f = frames[t];
+          fCache[t] = { n: f.n, p: f16to32(new Uint16Array(buf.slice(f.pOff, f.pOff + f.n * 6))),
+                        c: new Uint8Array(buf, f.cOff, f.n * 3) };
+          return fCache[t];
+        } };
+  pts.visible = el('showpts').checked;
+  lines.visible = cur.visible = el('showtraj').checked;
+  camera.position.set(0.35, -0.5, -2.3); controls.target.set(0, 0, 0);
+  el('trail').value = hdr.trail; el('trailv').textContent = hdr.trail;
+  el('load').style.display = 'none';
+  setFrame(0); start(hdr.fps);
+}
+
+function start(fps) { playing = true; el('play').textContent = '❚❚';
+  clearInterval(timer); timer = setInterval(() => setFrame((frame + 1) % S.T), 1000 / (fps || 15)); }
+function stop() { playing = false; el('play').textContent = '▶'; clearInterval(timer); }
+el('play').onclick = () => playing ? stop() : start();
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); playing ? stop() : start(); }
+  if (e.code === 'ArrowRight' && S) setFrame(Math.min(S.T - 1, frame + 1));
+  if (e.code === 'ArrowLeft' && S) setFrame(Math.max(0, frame - 1));
+});
+const prog = el('prog'); let drag = false;
+const seek = x => { if (!S) return; const r = prog.getBoundingClientRect();
+  setFrame(Math.round(Math.max(0, Math.min(1, (x - r.left) / r.width)) * (S.T - 1))); };
+prog.addEventListener('mousedown', e => { drag = true; prog.classList.add('drag'); seek(e.clientX); });
+document.addEventListener('mousemove', e => { if (drag) seek(e.clientX); });
+document.addEventListener('mouseup', () => { drag = false; prog.classList.remove('drag'); });
+prog.addEventListener('touchstart', e => { drag = true; seek(e.touches[0].clientX); }, { passive: true });
+document.addEventListener('touchmove', e => { if (drag) seek(e.touches[0].clientX); }, { passive: true });
+document.addEventListener('touchend', () => { drag = false; });
+
+// toolbar
+el('trail').oninput = () => { el('trailv').textContent = el('trail').value; setFrame(frame); };
+el('dsize').oninput = () => { el('dsizev').textContent = el('dsize').value; if (S) S.pMat.size = +el('dsize').value; };
+el('tsize').oninput = () => { el('tsizev').textContent = el('tsize').value; if (S) S.cMat.size = +el('tsize').value; };
+el('showpts').onchange = () => { if (S) S.pts.visible = el('showpts').checked; };
+el('showtraj').onchange = () => { if (S) S.lines.visible = S.cur.visible = el('showtraj').checked; };
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.floor(w * devicePixelRatio) || canvas.height !== Math.floor(h * devicePixelRatio)) {
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+}
+(function animate() { requestAnimationFrame(animate); resize(); controls.update(); renderer.render(scene3, camera); })();
+setTimeout(() => { el('hint').style.opacity = 0; }, 6000);
+
+const initial = new URLSearchParams(location.search).get('seq') || SCENES[0].id;
+selectScene(SCENES.some(s => s.id === initial) ? initial : SCENES[0].id);
+</script>
+</body>
+</html>

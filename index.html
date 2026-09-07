@@ -83,7 +83,7 @@
   .caption { font-size: 0.85rem; color: var(--text-dim); text-align: center; margin: 10px auto 0; max-width: 780px; }
 
   /* video / figure slots */
-  .media { border-radius: 8px; overflow: hidden; background: #0b0d12; box-shadow: 0 6px 22px rgba(20,30,60,.10); }
+  .media { border-radius: 8px; overflow: hidden; background: #fff; box-shadow: 0 6px 22px rgba(20,30,60,.10); }
   .media video, .media img { width: 100%; display: block; }
   .placeholder {
     border: 2px dashed var(--border); border-radius: 8px; background: var(--bg-alt);
@@ -181,6 +181,8 @@
   .tabs button.active { background: var(--accent); color: #fff; }
   .res-block { margin-top: 8px; }
   .res-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  #idea-tabs { display: flex; width: 100%; }
+  #idea-tabs button { flex: 1; padding: 8px 10px; font-size: 0.88rem; }
   .minitabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
   .minitabs button {
     border: none; background: var(--bg-alt); color: var(--text-sec);
@@ -287,8 +289,8 @@
       <span class="time-display">0:00 / 0:00</span>
     </div>
   </div>
-  <p class="caption">One-minute introduction: why long-video 4D reconstruction breaks with 2D
-  queries, our 3D-query decoder, and long-range tracking results.</p>
+  <p class="caption">Why long-video 4D reconstruction breaks with 2D queries, our 3D-query
+  decoder, and long-range tracking results.</p>
 
   <details class="abstract">
       <summary>Abstract</summary>
@@ -313,23 +315,18 @@
 <!-- ═══════════════ 3. MOTIVATION ═══════════════ -->
 <section id="idea">
   <h2>Point4D queries 3D points, not 2D pixels</h2>
-  <p class="lead">A transformer cannot attend over hundreds of frames at once, so a long video
-  has to be processed in overlapping chunks and stitched back together. For static geometry
-  that is just alignment — but a <b>trajectory</b> must be picked up again in the next chunk,
-  and how a method re-acquires the point is what decides whether the track survives.</p>
-
   <span class="minitabs" id="idea-tabs" style="margin-top:16px;">
-    <button data-clip="motiv_long3d" class="active">Chunked 3D reconstruction</button>
-    <button data-clip="motiv_2d">2D queries break</button>
-    <button data-clip="motiv_3d">3D queries work</button>
+    <button data-clip="motiv_long3d" class="active">Chunk &amp; chain works for 3D</button>
+    <button data-clip="motiv_2d">2D queries break the chain</button>
+    <button data-clip="motiv_3d">3D queries keep it</button>
   </span>
 
   <div class="media" id="idea-stage" style="margin-top:12px;background:#fff;">
     <video id="idea-video" src="assets/videos/motiv_long3d.mp4" autoplay muted loop playsinline></video>
   </div>
-  <p class="caption" id="idea-caption">Long videos are reconstructed chunk by chunk and the
-  chunks are aligned — but a 4D track has to continue across the seam, which alignment alone
-  cannot do.</p>
+  <p class="caption" id="idea-caption">Long 3D reconstruction already chunks a video and aligns the pieces.
+  Can 4D be chained the same way? A trajectory has to continue across the seam, which alignment
+  alone cannot do.</p>
 </section>
 
 <!-- ═══════════════ 4. METHOD ═══════════════ -->
@@ -463,23 +460,21 @@
 <!-- ═══════════════ 6. GALLERY ═══════════════ -->
 <section id="gallery">
   <h2>Interactive 4D Viewer</h2>
-  <p class="muted">Explore a Point4D reconstruction in the browser: the left pane plays the
-  video, the right pane shows the per-frame point cloud with the predicted trajectories.
-  Drag to rotate, scroll to zoom, and use the toolbar for trail length, point size, and
-  query filters.</p>
+  <p class="muted">Explore Point4D reconstructions in the browser: each scene plays back as a
+  per-frame point cloud with the predicted trajectories drawn through it.</p>
 
-  <div class="media" id="viewer-shell" style="margin-top:14px;background:#fff;">
+  <div class="media" id="viewer-shell" style="margin-top:14px;background:#fff;border:1px solid var(--border);">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
          gap:10px;height:420px;color:var(--text-dim);">
       <button id="viewer-load" style="border:none;background:var(--accent);color:#fff;
               padding:10px 20px;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;">
         &#9654; Load interactive viewer
       </button>
-      <div style="font-size:0.82rem;">Downloads about 27&nbsp;MB and runs entirely in your browser.</div>
+      <div style="font-size:0.82rem;">Runs entirely in your browser; each scene streams in on demand.</div>
     </div>
   </div>
-  <p class="caption">Dense tracking on a 60-frame clip: 9.5k queries carried through the
-  sequence, shown together with the per-frame reconstructed geometry.</p>
+  <p class="caption">Pick a scene on the left, then drag to rotate and scroll to zoom. The
+  toolbar controls trail length, point size, and playback.</p>
 </section>
 
 </div><!-- /wrap -->
@@ -602,7 +597,7 @@
     const btn = document.getElementById('viewer-load');
     if (!shell || !btn) return;
     btn.onclick = () => {
-      shell.innerHTML = '<iframe src="assets/viewers/cat_jumping/index.html" ' +
+      shell.innerHTML = '<iframe src="assets/gallery/viewer.html" ' +
         'title="Point4D interactive viewer" ' +
         'style="width:100%;height:640px;border:0;display:block;"></iframe>';
     };
@@ -615,8 +610,9 @@
     const cap = document.getElementById('idea-caption');
     if (!tabs || !vid) return;
     const captions = {
-      motiv_long3d: 'Long videos are reconstructed chunk by chunk and the chunks are aligned — '
-                  + 'but a 4D track has to continue across the seam, which alignment alone cannot do.',
+      motiv_long3d: 'Long 3D reconstruction already chunks a video and aligns the pieces. Can 4D be '
+                  + 'chained the same way? A trajectory has to continue across the seam, which '
+                  + 'alignment alone cannot do.',
       motiv_2d: 'A 2D-query method must project its predicted 3D endpoint back to a pixel to '
               + 're-query it. When the runner passes behind the column that pixel lands on the '
               + 'wrong surface, and the track follows the column instead.',
