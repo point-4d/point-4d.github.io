@@ -40,17 +40,6 @@
   #tools input[type=range] { width:96px; accent-color:var(--accent); }
   #tools input[type=checkbox] { accent-color:var(--accent); }
   #tools .val { width:20px; text-align:right; color:var(--dim); }
-  #tools hr { border:none; border-top:1px solid var(--border); margin:8px 0 6px; }
-  #tools .ax input[type=range] { width:56px; }
-  #tools .ax span.lb { width:12px; font-weight:600; }
-  #tools .ax .rv { width:78px; text-align:right; color:var(--dim); font-size:0.72rem;
-                   font-variant-numeric:tabular-nums; }
-  #crop.off { opacity:.4; pointer-events:none; }
-  #tools .kept { font-size:0.72rem; color:var(--dim); }
-  #reset { border:1px solid var(--border); background:#fff; border-radius:5px; cursor:pointer;
-           font-size:0.72rem; padding:2px 8px; color:#555; }
-  #reset:hover { border-color:var(--accent); color:var(--accent); }
-
   /* playbar */
   #bar { position:absolute; left:0; right:0; bottom:0; padding:10px 18px 14px;
          background:linear-gradient(transparent, rgba(255,255,255,.95) 40%);
@@ -62,7 +51,6 @@
   #pbar::after { content:""; position:absolute; right:-5px; top:50%; transform:translateY(-50%);
     width:10px; height:10px; background:var(--accent); border-radius:50%; opacity:0; transition:opacity .2s; }
   #prog:hover #pbar::after, #prog.drag #pbar::after { opacity:1; }
-  #ftxt { font-size:0.8rem; color:var(--dim); min-width:70px; text-align:right; }
 
   #load { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
           flex-direction:column; gap:10px; color:var(--dim); font-size:0.9rem;
@@ -85,25 +73,13 @@
     <div id="hint">drag to rotate &middot; scroll to zoom &middot; space to play/pause</div>
     <div id="tools">
       <div class="row"><span class="lb">Trail length</span><input id="trail" type="range" min="0" max="60"><span class="val" id="trailv"></span></div>
-      <div class="row"><span class="lb">Depth pt size</span><input id="dsize" type="range" min="1" max="6" value="3"><span class="val" id="dsizev">3</span></div>
-      <div class="row"><span class="lb">Track pt size</span><input id="tsize" type="range" min="2" max="10" value="6"><span class="val" id="tsizev">6</span></div>
-      <div class="row"><label><input id="showpts" type="checkbox" checked> Depth points</label></div>
       <div class="row"><label><input id="showtraj" type="checkbox" checked> Trajectories</label></div>
-      <hr>
-      <div class="row"><label><input id="cropon" type="checkbox"> Query region</label><button id="reset" type="button">reset</button></div>
-      <div class="row"><span class="kept" id="kept"></span></div>
-      <div id="crop" class="off">
-        <div class="row ax"><span class="lb">X</span><input id="x0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="x1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="xv"></span></div>
-        <div class="row ax"><span class="lb">Y</span><input id="y0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="y1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="yv"></span></div>
-        <div class="row ax"><span class="lb">Z</span><input id="z0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="z1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="zv"></span></div>
-      </div>
     </div>
     <div id="load"><div class="spin"></div><span id="loadtxt">loading…</span></div>
     <div id="idle">Pick a scene on the left to load it</div>
     <div id="bar">
       <button id="play">❚❚</button>
       <div id="prog"><div id="pbar"></div></div>
-      <span id="ftxt"></span>
     </div>
   </div>
 </div>
@@ -116,6 +92,7 @@ const SCENES = [
   { id: 'crouchwalk-lllab', name: 'Robot walking' },
 ];
 const el = id => document.getElementById(id);
+const DEPTH_PT = 4, TRACK_PT = 3;   // px, not adjustable
 
 // ── sidebar ──
 const side = el('side');
@@ -168,37 +145,6 @@ async function fetchScene(id) {
   return cache[id];
 }
 
-// axis-aligned region on the QUERY ORIGIN: a track is kept when its frame-0
-// position falls inside, and then its whole trajectory is drawn. The depth
-// cloud is never filtered. null = no region active.
-let box = null, keep = null;
-const inBox = (x, y, z) => x >= box[0] && x <= box[1] && y >= box[2] && y <= box[3]
-                        && z >= box[4] && z <= box[5];
-function markKeep() {
-  if (!S) return;
-  if (!box) { keep = null; el('kept').textContent = ''; return; }
-  keep = new Uint8Array(S.N);
-  let n = 0;
-  for (let i = 0; i < S.N; i++) {
-    const o = i * 3;                       // frame 0 = where the query was seeded
-    if (inBox(S.traj[o], S.traj[o + 1], S.traj[o + 2])) { keep[i] = 1; n++; }
-  }
-  el('kept').textContent = `${n} / ${S.N} queries`;
-}
-function readBox() {
-  const b = ['x', 'y', 'z'].flatMap(k => {
-    let lo = +el(k + '0').value, hi = +el(k + '1').value;
-    if (lo > hi) [lo, hi] = [hi, lo];        // sliders may cross
-    el(k + 'v').textContent = `${lo <= -3 ? '-∞' : lo.toFixed(2)} … ${hi >= 3 ? '∞' : hi.toFixed(2)}`;
-    // an end left at its stop means "no limit", so a fully open box never clips
-    return [lo <= -3 ? -Infinity : lo, hi >= 3 ? Infinity : hi];
-  });
-  const on = el('cropon').checked;
-  box = on ? b : null;
-  el('crop').classList.toggle('off', !on);
-  markKeep();
-}
-
 let S = null;              // active scene state
 let frame = 0, playing = true, timer = null;
 
@@ -206,7 +152,6 @@ function setFrame(t) {
   if (!S) return;
   frame = t;
   el('pbar').style.width = (t / (S.T - 1) * 100) + '%';
-  el('ftxt').textContent = `${t + 1} / ${S.T}`;
   const d = S.frameData(t);
   S.pg.attributes.position.array.set(d.p.subarray(0, d.n * 3));
   const pc = S.pg.attributes.color.array;
@@ -224,7 +169,6 @@ function setFrame(t) {
   const cp = S.cg.attributes.position.array, cc = S.cg.attributes.color.array;
   let s = 0, nc = 0;
   for (let i = 0; i < N; i++) {
-    if (keep && !keep[i]) continue;
     const r = hcol[i * 3] / 255, g = hcol[i * 3 + 1] / 255, b = hcol[i * 3 + 2] / 255;
     const o2 = (t * N + i) * 3;
     if (traj[o2] || traj[o2 + 1] || traj[o2 + 2]) {
@@ -271,7 +215,7 @@ async function selectScene(id) {
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxn * 3), 3));
   pg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(maxn * 3), 3));
-  const pMat = new THREE.PointsMaterial({ size: +el('dsize').value, vertexColors: true, sizeAttenuation: false });
+  const pMat = new THREE.PointsMaterial({ size: DEPTH_PT, vertexColors: true, sizeAttenuation: false });
   const pts = new THREE.Points(pg, pMat);
   const lg = new THREE.BufferGeometry();
   const trailCap = N * (+el('trail').max) * 6;
@@ -281,7 +225,7 @@ async function selectScene(id) {
   const cg = new THREE.BufferGeometry();
   cg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
   cg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
-  const cMat = new THREE.PointsMaterial({ size: +el('tsize').value, vertexColors: true, sizeAttenuation: false });
+  const cMat = new THREE.PointsMaterial({ size: TRACK_PT, vertexColors: true, sizeAttenuation: false });
   const cur = new THREE.Points(cg, cMat);
   scene3.add(pts); scene3.add(lines); scene3.add(cur);
   objs = [pts, lines, cur];
@@ -294,12 +238,10 @@ async function selectScene(id) {
                         c: new Uint8Array(buf, f.cOff, f.n * 3) };
           return fCache[t];
         } };
-  pts.visible = el('showpts').checked;
   lines.visible = cur.visible = el('showtraj').checked;
   camera.position.set(0.35, -0.5, -2.3); controls.target.set(0, 0, 0);
   el('trail').value = hdr.trail; el('trailv').textContent = hdr.trail;
   el('load').style.display = 'none';
-  markKeep();
   setFrame(0); start(hdr.fps);
 }
 
@@ -324,17 +266,7 @@ document.addEventListener('touchend', () => { drag = false; });
 
 // toolbar
 el('trail').oninput = () => { el('trailv').textContent = el('trail').value; setFrame(frame); };
-el('dsize').oninput = () => { el('dsizev').textContent = el('dsize').value; if (S) S.pMat.size = +el('dsize').value; };
-el('tsize').oninput = () => { el('tsizev').textContent = el('tsize').value; if (S) S.cMat.size = +el('tsize').value; };
-el('showpts').onchange = () => { if (S) S.pts.visible = el('showpts').checked; };
 el('showtraj').onchange = () => { if (S) S.lines.visible = S.cur.visible = el('showtraj').checked; };
-for (const k of ['cropon', 'x0', 'x1', 'y0', 'y1', 'z0', 'z1'])
-  el(k).oninput = () => { readBox(); if (S) setFrame(frame); };
-el('reset').onclick = () => {
-  for (const k of ['x', 'y', 'z']) { el(k + '0').value = -3; el(k + '1').value = 3; }
-  readBox(); if (S) setFrame(frame);
-};
-readBox();
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
