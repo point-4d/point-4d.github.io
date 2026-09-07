@@ -218,7 +218,8 @@ function setFrame(t) {
     at.needsUpdate = true;
   }
   const N = S.N, traj = S.traj, hcol = S.hcol;
-  const W = +el('trail').value, t0 = W > 0 ? Math.max(0, t - W) : 0;
+  const cap = +el('trail').max;
+  const W = +el('trail').value || cap, t0 = Math.max(0, t - W);
   const lp = S.lg.attributes.position.array, lc = S.lg.attributes.color.array;
   const cp = S.cg.attributes.position.array, cc = S.cg.attributes.color.array;
   let s = 0, nc = 0;
