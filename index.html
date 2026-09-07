@@ -358,8 +358,6 @@
       </span>
     </h3>
     <div class="res-pane active" id="lv-qual">
-      <p class="muted">Dense trajectories over hundreds of frames, chained across chunks —
-      Point4D vs baselines.</p>
       <div class="carousel" id="lv-carousel">
         <button class="car-btn" data-dir="-1" aria-label="Previous">‹</button>
         <div class="car-view"><div class="car-track" data-visible="1"></div></div>
@@ -367,11 +365,8 @@
       </div>
     </div>
     <div class="res-pane" id="lv-quant">
-      <p class="muted">We compare Point4D with other feed-forward 4D reconstruction methods on
-      ~200-frame sequences (chunk 48 / overlap 8). While prior methods chain chunks by projecting
-      each 3D endpoint back to a 2D pixel for re-querying, <b>Point4D</b> re-queries its predicted
-      3D point directly. As shown below, Point4D outperforms all feed-forward baselines across
-      datasets and visibility conditions.</p>
+      <p class="muted">On ~200-frame sequences (chunk 48 / overlap 8), <b>Point4D</b> outperforms
+      every feed-forward baseline across datasets and visibility conditions.</p>
       <span class="minitabs" id="lv-dataset" style="margin-bottom:12px;">
         <button class="active" data-ds="pointodyssey">PointOdyssey</button><button data-ds="dynamicreplica">Dynamic Replica</button><button data-ds="pstudio">Panoptic Studio</button>
       </span>
@@ -391,8 +386,6 @@
       </span>
     </h3>
     <div class="res-pane active" id="sc-qual">
-      <p class="muted">Within a single chunk, 3D queries match 2D-query decoding on standard
-      short-range benchmarks.</p>
       <div class="carousel" id="sc-carousel">
         <button class="car-btn" data-dir="-1" aria-label="Previous">‹</button>
         <div class="car-view"><div class="car-track"></div></div>
@@ -466,7 +459,7 @@
             style="width:100%;height:640px;border:0;display:block;"></iframe>
   </div>
   <p class="caption">Pick a scene on the left to load it, then drag to rotate and scroll to zoom.
-  The toolbar controls trail length, point size, and playback.</p>
+  The toolbar controls trail length, point size, and an XYZ crop box for isolating part of the scene.</p>
 </section>
 
 </div><!-- /wrap -->

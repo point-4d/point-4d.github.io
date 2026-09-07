@@ -16,10 +16,10 @@
           padding:14px 12px; background:#fafbfc; }
   #side h1 { font-size:0.95rem; font-weight:700; color:#333; margin-bottom:12px; }
   .scene { display:block; width:100%; border:2px solid transparent; border-radius:8px;
-           overflow:hidden; cursor:pointer; margin-bottom:12px; background:#fff;
+           overflow:hidden; cursor:pointer; margin-bottom:8px; background:#fff;
            box-shadow:0 1px 4px rgba(0,0,0,.08); transition:border-color .15s, box-shadow .15s; }
-  .scene img { width:100%; display:block; }
-  .scene .nm { padding:6px 9px; font-size:0.8rem; font-weight:600; color:#444; text-align:left; }
+  .scene img { width:100%; height:70px; object-fit:cover; display:block; }
+  .scene .nm { padding:5px 9px; font-size:0.78rem; font-weight:600; color:#444; text-align:left; }
   .scene:hover { box-shadow:0 4px 12px rgba(20,30,60,.15); }
   .scene.active { border-color:var(--accent); }
   .scene.active .nm { color:var(--accent); }
@@ -40,6 +40,15 @@
   #tools input[type=range] { width:96px; accent-color:var(--accent); }
   #tools input[type=checkbox] { accent-color:var(--accent); }
   #tools .val { width:20px; text-align:right; color:var(--dim); }
+  #tools hr { border:none; border-top:1px solid var(--border); margin:8px 0 6px; }
+  #tools .ax input[type=range] { width:56px; }
+  #tools .ax span.lb { width:12px; font-weight:600; }
+  #tools .ax .rv { width:78px; text-align:right; color:var(--dim); font-size:0.72rem;
+                   font-variant-numeric:tabular-nums; }
+  #crop.off { opacity:.4; pointer-events:none; }
+  #reset { border:1px solid var(--border); background:#fff; border-radius:5px; cursor:pointer;
+           font-size:0.72rem; padding:2px 8px; color:#555; }
+  #reset:hover { border-color:var(--accent); color:var(--accent); }
 
   /* playbar */
   #bar { position:absolute; left:0; right:0; bottom:0; padding:10px 18px 14px;
@@ -79,6 +88,13 @@
       <div class="row"><span class="lb">Track pt size</span><input id="tsize" type="range" min="2" max="10" value="6"><span class="val" id="tsizev">6</span></div>
       <div class="row"><label><input id="showpts" type="checkbox" checked> Depth points</label></div>
       <div class="row"><label><input id="showtraj" type="checkbox" checked> Trajectories</label></div>
+      <hr>
+      <div class="row"><label><input id="cropon" type="checkbox"> Crop range</label><button id="reset" type="button">reset</button></div>
+      <div id="crop" class="off">
+        <div class="row ax"><span class="lb">X</span><input id="x0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="x1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="xv"></span></div>
+        <div class="row ax"><span class="lb">Y</span><input id="y0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="y1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="yv"></span></div>
+        <div class="row ax"><span class="lb">Z</span><input id="z0" type="range" min="-3" max="3" step="0.05" value="-3"><input id="z1" type="range" min="-3" max="3" step="0.05" value="3"><span class="rv" id="zv"></span></div>
+      </div>
     </div>
     <div id="load"><div class="spin"></div><span id="loadtxt">loading…</span></div>
     <div id="idle">Pick a scene on the left to load it</div>
@@ -91,9 +107,14 @@
 </div>
 <script>
 const SCENES = [
-  { id: 'cat_jumping',      name: 'Cat jumping' },
-  { id: 'bouldering_2',     name: 'Bouldering' },
-  { id: 'basketball_layup', name: 'Basketball layup' },
+  { id: 'cat_jumping',        name: 'Cat jumping' },
+  { id: 'bouldering_2',       name: 'Bouldering' },
+  { id: 'basketball_layup',   name: 'Basketball layup' },
+  { id: 'gym_box_jump',       name: 'Box jump' },
+  { id: 'bouldering_1',       name: 'Climbing wall' },
+  { id: 'car_driving',        name: 'Car driving' },
+  { id: 'active_exploration', name: 'Robot exploration' },
+  { id: 'davis_train_80',     name: 'Model train' },
 ];
 const el = id => document.getElementById(id);
 
@@ -148,6 +169,23 @@ async function fetchScene(id) {
   return cache[id];
 }
 
+// axis-aligned crop box; null when the crop checkbox is off
+let box = null;
+const inBox = (x, y, z) => x >= box[0] && x <= box[1] && y >= box[2] && y <= box[3]
+                        && z >= box[4] && z <= box[5];
+function readBox() {
+  const b = ['x', 'y', 'z'].flatMap(k => {
+    let lo = +el(k + '0').value, hi = +el(k + '1').value;
+    if (lo > hi) [lo, hi] = [hi, lo];        // sliders may cross
+    el(k + 'v').textContent = `${lo <= -3 ? '-∞' : lo.toFixed(2)} … ${hi >= 3 ? '∞' : hi.toFixed(2)}`;
+    // an end left at its stop means "no limit", so a fully open box never clips
+    return [lo <= -3 ? -Infinity : lo, hi >= 3 ? Infinity : hi];
+  });
+  const on = el('cropon').checked;
+  box = on ? b : null;
+  el('crop').classList.toggle('off', !on);
+}
+
 let S = null;              // active scene state
 let frame = 0, playing = true, timer = null;
 
@@ -157,10 +195,16 @@ function setFrame(t) {
   el('pbar').style.width = (t / (S.T - 1) * 100) + '%';
   el('ftxt').textContent = `${t + 1} / ${S.T}`;
   const d = S.frameData(t);
-  S.pg.attributes.position.array.set(d.p.subarray(0, d.n * 3));
-  const pc = S.pg.attributes.color.array;
-  for (let i = 0; i < d.n * 3; i++) pc[i] = d.c[i] / 255;
-  S.pg.setDrawRange(0, d.n);
+  const pp = S.pg.attributes.position.array, pc = S.pg.attributes.color.array;
+  let np = 0;
+  for (let i = 0; i < d.n; i++) {
+    const x = d.p[i * 3], y = d.p[i * 3 + 1], z = d.p[i * 3 + 2];
+    if (box && !inBox(x, y, z)) continue;
+    pp[np * 3] = x; pp[np * 3 + 1] = y; pp[np * 3 + 2] = z;
+    pc[np * 3] = d.c[i * 3] / 255; pc[np * 3 + 1] = d.c[i * 3 + 1] / 255;
+    pc[np * 3 + 2] = d.c[i * 3 + 2] / 255; np++;
+  }
+  S.pg.setDrawRange(0, np);
   S.pg.attributes.position.needsUpdate = S.pg.attributes.color.needsUpdate = true;
   const N = S.N, traj = S.traj, hcol = S.hcol;
   const W = +el('trail').value, t0 = W > 0 ? Math.max(0, t - W) : 0;
@@ -170,12 +214,15 @@ function setFrame(t) {
   for (let i = 0; i < N; i++) {
     const r = hcol[i * 3] / 255, g = hcol[i * 3 + 1] / 255, b = hcol[i * 3 + 2] / 255;
     const o2 = (t * N + i) * 3;
-    if (traj[o2] || traj[o2 + 1] || traj[o2 + 2]) {
+    if ((traj[o2] || traj[o2 + 1] || traj[o2 + 2])
+        && (!box || inBox(traj[o2], traj[o2 + 1], traj[o2 + 2]))) {
       cp[nc * 3] = traj[o2]; cp[nc * 3 + 1] = traj[o2 + 1]; cp[nc * 3 + 2] = traj[o2 + 2];
       cc[nc * 3] = r; cc[nc * 3 + 1] = g; cc[nc * 3 + 2] = b; nc++;
     }
     for (let k = t0; k < t; k++) {
       const A = (k * N + i) * 3, B = ((k + 1) * N + i) * 3;
+      if (box && !(inBox(traj[A], traj[A + 1], traj[A + 2])
+                && inBox(traj[B], traj[B + 1], traj[B + 2]))) continue;
       lp[s * 6] = traj[A]; lp[s * 6 + 1] = traj[A + 1]; lp[s * 6 + 2] = traj[A + 2];
       lp[s * 6 + 3] = traj[B]; lp[s * 6 + 4] = traj[B + 1]; lp[s * 6 + 5] = traj[B + 2];
       for (let q = 0; q < 2; q++) { lc[s * 6 + q * 3] = r; lc[s * 6 + q * 3 + 1] = g; lc[s * 6 + q * 3 + 2] = b; }
@@ -261,6 +308,13 @@ el('dsize').oninput = () => { el('dsizev').textContent = el('dsize').value; if (
 el('tsize').oninput = () => { el('tsizev').textContent = el('tsize').value; if (S) S.cMat.size = +el('tsize').value; };
 el('showpts').onchange = () => { if (S) S.pts.visible = el('showpts').checked; };
 el('showtraj').onchange = () => { if (S) S.lines.visible = S.cur.visible = el('showtraj').checked; };
+for (const k of ['cropon', 'x0', 'x1', 'y0', 'y1', 'z0', 'z1'])
+  el(k).oninput = () => { readBox(); if (S) setFrame(frame); };
+el('reset').onclick = () => {
+  for (const k of ['x', 'y', 'z']) { el(k + '0').value = -3; el(k + '1').value = 3; }
+  readBox(); if (S) setFrame(frame);
+};
+readBox();
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
