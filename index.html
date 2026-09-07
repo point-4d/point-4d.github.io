@@ -462,18 +462,12 @@
   <p class="muted">Explore Point4D reconstructions in the browser: each scene plays back as a
   per-frame point cloud with the predicted trajectories drawn through it.</p>
 
-  <div class="media" id="viewer-shell" style="margin-top:14px;background:#fff;border:1px solid var(--border);">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-         gap:10px;height:420px;color:var(--text-dim);">
-      <button id="viewer-load" style="border:none;background:var(--accent);color:#fff;
-              padding:10px 20px;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;">
-        &#9654; Load interactive viewer
-      </button>
-      <div style="font-size:0.82rem;">Runs entirely in your browser; each scene streams in on demand.</div>
-    </div>
+  <div class="media" style="margin-top:14px;background:#fff;border:1px solid var(--border);">
+    <iframe src="assets/gallery/viewer.html" loading="lazy" title="Point4D interactive 4D viewer"
+            style="width:100%;height:640px;border:0;display:block;"></iframe>
   </div>
-  <p class="caption">Pick a scene on the left, then drag to rotate and scroll to zoom. The
-  toolbar controls trail length, point size, and playback.</p>
+  <p class="caption">Pick a scene on the left to load it, then drag to rotate and scroll to zoom.
+  The toolbar controls trail length, point size, and playback.</p>
 </section>
 
 </div><!-- /wrap -->
@@ -589,45 +583,6 @@
       btn.classList.add('active');
       document.getElementById('lv-chart').src = `assets/figures/longvideo_${btn.dataset.ds}.png`;
     }));
-
-  // interactive viewer: load only when the visitor asks for it
-  (function () {
-    const shell = document.getElementById('viewer-shell');
-    const btn = document.getElementById('viewer-load');
-    if (!shell || !btn) return;
-    btn.onclick = () => {
-      shell.innerHTML = '<iframe src="assets/gallery/viewer.html" ' +
-        'title="Point4D interactive viewer" ' +
-        'style="width:100%;height:640px;border:0;display:block;"></iframe>';
-    };
-  })();
-
-  // Key Idea: three clips behind three tabs
-  (function () {
-    const tabs = document.getElementById('idea-tabs');
-    const vid = document.getElementById('idea-video');
-    const cap = document.getElementById('idea-caption');
-    if (!tabs || !vid) return;
-    const captions = {
-      motiv_long3d: 'Long 3D reconstruction already chunks a video and aligns the pieces. '
-                  + 'Can 4D be chained the same way?',
-      motiv_2d: 'Re-querying a 2D pixel fails the moment the point is occluded — the track '
-              + 'follows the column instead of the runner.',
-      motiv_3d: 'Point4D hands the predicted 3D point straight to the next chunk, so occlusion '
-              + 'and leaving the frame no longer break the chain.',
-    };
-    tabs.addEventListener('click', e => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      tabs.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      const next = 'assets/videos/' + b.dataset.clip + '.mp4';
-      // re-selecting the same tab replays it from the start
-      if (vid.getAttribute('src') === next) vid.currentTime = 0;
-      else vid.setAttribute('src', next);
-      vid.play().catch(() => {});
-      cap.textContent = captions[b.dataset.clip];
-    });
-  })();
 
   // per-subsection qualitative/quantitative mini tabs
   document.querySelectorAll('.minitabs').forEach(mt => {

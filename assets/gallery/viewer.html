@@ -27,6 +27,8 @@
   /* ── right: viewer ── */
   #main { flex:1; position:relative; }
   #c { display:block; width:100%; height:100%; }
+  #idle { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+          color:var(--dim); font-size:0.95rem; font-weight:600; background:#fff; }
   #hint { position:absolute; top:14px; left:16px; font-size:0.8rem; color:var(--dim); transition:opacity 1s; }
 
   /* toolbar */
@@ -79,6 +81,7 @@
       <div class="row"><label><input id="showtraj" type="checkbox" checked> Trajectories</label></div>
     </div>
     <div id="load"><div class="spin"></div><span id="loadtxt">loading…</span></div>
+    <div id="idle">Pick a scene on the left to load it</div>
     <div id="bar">
       <button id="play">❚❚</button>
       <div id="prog"><div id="pbar"></div></div>
@@ -88,8 +91,9 @@
 </div>
 <script>
 const SCENES = [
-  { id: 'cat_jumping',  name: 'Cat jumping' },
-  { id: 'bouldering_2', name: 'Bouldering' },
+  { id: 'cat_jumping',      name: 'Cat jumping' },
+  { id: 'bouldering_2',     name: 'Bouldering' },
+  { id: 'basketball_layup', name: 'Basketball layup' },
 ];
 const el = id => document.getElementById(id);
 
@@ -187,6 +191,7 @@ function setFrame(t) {
 async function selectScene(id) {
   document.querySelectorAll('.scene').forEach(b => b.classList.remove('active'));
   el('sc-' + id).classList.add('active');
+  el('idle').style.display = 'none';
   el('load').style.display = 'flex'; el('loadtxt').textContent = 'loading…';
   stop();
   const { hdr, buf } = await fetchScene(id);
@@ -266,8 +271,9 @@ function resize() {
 (function animate() { requestAnimationFrame(animate); resize(); controls.update(); renderer.render(scene3, camera); })();
 setTimeout(() => { el('hint').style.opacity = 0; }, 6000);
 
-const initial = new URLSearchParams(location.search).get('seq') || SCENES[0].id;
-selectScene(SCENES.some(s => s.id === initial) ? initial : SCENES[0].id);
+const requested = new URLSearchParams(location.search).get('seq');
+if (requested && SCENES.some(s => s.id === requested)) selectScene(requested);
+else el('idle').style.display = 'flex';   // nothing loads until a scene is picked
 </script>
 </body>
 </html>
