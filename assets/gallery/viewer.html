@@ -139,7 +139,8 @@ async function fetchScene(id) {
     const { done, value } = await reader.read();
     if (done) break;
     parts.push(value); got += value.length;
-    if (total) el('loadtxt').textContent = `loading… ${(got / total * 100).toFixed(0)}%`;
+    if (total) el('loadtxt').textContent =
+      `loading… ${Math.min(100, got / total * 100).toFixed(0)}%`;
   }
   const u8 = new Uint8Array(got); let o = 0;
   for (const p of parts) { u8.set(p, o); o += p.length; }
@@ -211,7 +212,10 @@ async function selectScene(id) {
   const T = hdr.T, N = hdr.N, counts = hdr.counts;
   const frames = []; let off = 0;
   for (let t = 0; t < T; t++) { const n = counts[t]; frames.push({ n, pOff: off, cOff: off + n * 6 }); off += n * 9; }
-  const traj = f16to32(new Uint16Array(buf, off, T * N * 3)); off += T * N * 3 * 2;
+  // copy rather than view: the point block is 9 bytes per point, so an odd
+  // total point count leaves `off` odd and a Uint16Array view would throw
+  const traj = f16to32(new Uint16Array(buf.slice(off, off + T * N * 3 * 2)));
+  off += T * N * 3 * 2;
   const hcol = new Uint8Array(buf, off, N * 3);
   let maxn = 0; for (const c of counts) maxn = Math.max(maxn, c);
   const pg = new THREE.BufferGeometry();
