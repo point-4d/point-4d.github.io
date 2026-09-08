@@ -180,6 +180,8 @@
   }
   .tabs button.active { background: var(--accent); color: #fff; }
   .res-block { margin-top: 8px; }
+  .ack { margin: 8px 0 26px; font-size: 0.86rem; line-height: 1.6; color: var(--text-sec);
+         text-align: justify; }
   .res-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .minitabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
   .minitabs button {
@@ -358,6 +360,23 @@
   </div>
 
   <div class="res-block">
+    <h3 class="res-head">Long-horizon stability</h3>
+    <p class="muted">Per-chunk trajectory error as the video progresses — Point4D's (<span style="color:#d62728;font-weight:600;">red plot</span>) error grows
+    slowest across chunk boundaries.</p>
+    <div class="grid2">
+      <div>
+        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_dynamic_replica_eval.png" alt="Per-chunk EPE/APD on Dynamic Replica"></div>
+        <p class="caption" style="text-align:center;">^ Dynamic Replica (200 frames)</p>
+      </div>
+      <div>
+        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_tapvid3d_pstudio.png" alt="Per-chunk EPE/APD on Panoptic Studio"></div>
+        <p class="caption" style="text-align:center;">^ Panoptic Studio (150 frames)</p>
+      </div>
+    </div>
+    <p class="caption">Per-chunk EPE (↓) and APD (↑); chunk 48 / overlap 8.</p>
+  </div>
+
+  <div class="res-block">
     <h3 class="res-head">Single chunk tracking
       <span class="minitabs" data-group="sc">
         <button class="active" data-pane="sc-qual">Qualitative</button><button data-pane="sc-quant">Quantitative</button>
@@ -408,22 +427,6 @@
     </div>
   </div>
 
-  <div class="res-block">
-    <h3 class="res-head">Long-horizon stability</h3>
-    <p class="muted">Per-chunk trajectory error as the video progresses — Point4D's (<span style="color:#d62728;font-weight:600;">red plot</span>) error grows
-    slowest across chunk boundaries.</p>
-    <div class="grid2">
-      <div>
-        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_dynamic_replica_eval.png" alt="Per-chunk EPE/APD on Dynamic Replica"></div>
-        <p class="caption" style="text-align:center;">^ Dynamic Replica (200 frames)</p>
-      </div>
-      <div>
-        <div class="media" style="background:#fff;"><img src="assets/figures/per_chunk_tapvid3d_pstudio.png" alt="Per-chunk EPE/APD on Panoptic Studio"></div>
-        <p class="caption" style="text-align:center;">^ Panoptic Studio (150 frames)</p>
-      </div>
-    </div>
-    <p class="caption">Per-chunk EPE (↓) and APD (↑); chunk 48 / overlap 8.</p>
-  </div>
 </section>
 
 <!-- ═══════════════ 4. GALLERY ═══════════════ -->
@@ -441,6 +444,20 @@
 
 <footer>
   <div class="wrap">
+    <b style="color: var(--text);">Acknowledgements</b>
+    <p class="ack">We thank the members of the Physical Perception Lab at CMU for their valuable
+    discussions. This work was supported in part by NSF Award IIS-2345610. This work used
+    Bridges-2 at Pittsburgh Supercomputing Center through allocation CIS251064 from the Advanced
+    Cyberinfrastructure Coordination Ecosystem: Services &amp; Support (ACCESS) program, which is
+    supported by National Science Foundation grants #2138259, #2138286, #2138307, #2137603, and
+    #2138296. This work was supported by Intelligence Advanced Research Projects Activity (IARPA)
+    via Department of Interior/Interior Business Center (DOI/IBC) contract number 140D0423C0074.
+    The U.S. Government is authorized to reproduce and distribute reprints for Governmental
+    purposes notwithstanding any copyright annotation thereon. Disclaimer: The views and
+    conclusions contained herein are those of the authors and should not be interpreted as
+    necessarily representing the official policies or endorsements, either expressed or implied,
+    of IARPA, DOI/IBC, or the U.S. Government.</p>
+
     <b style="color: var(--text);">BibTeX</b>
     <pre class="bibtex">@inproceedings{point4d2026,
   title     = {Point4D: Long-range 4D Motion Reconstruction},
