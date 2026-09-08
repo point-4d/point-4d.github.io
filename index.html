@@ -181,10 +181,6 @@
   .tabs button.active { background: var(--accent); color: #fff; }
   .res-block { margin-top: 8px; }
   .res-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  #idea-tabs { display: flex; width: 100%; }
-  .idea-sub { margin: 18px 0 10px; font-size: 1.12rem; line-height: 1.5;
-              font-weight: 600; color: var(--text); }
-  #idea-tabs button { flex: 1; padding: 8px 10px; font-size: 0.88rem; }
   .minitabs { display: inline-flex; border: 1.5px solid var(--border); border-radius: 7px; overflow: hidden; }
   .minitabs button {
     border: none; background: var(--bg-alt); color: var(--text-sec);
@@ -245,7 +241,6 @@
 <nav>
   <div class="nav-inner">
     <a href="#overview">Overview</a>
-    <a href="#idea">Key Idea</a>
     <a href="#method">Method</a>
     <a href="#results">Results</a>
     <a href="#gallery">Gallery</a>
@@ -310,24 +305,7 @@
     </details>
 </section>
 
-
-
-<!-- ═══════════════ 3. MOTIVATION ═══════════════ -->
-<section id="idea">
-  <h2>Point4D queries 3D points, not 2D pixels</h2>
-  <span class="minitabs" id="idea-tabs" style="margin-top:16px;">
-    <button data-clip="motiv_long3d" class="active">Chunk &amp; chain works for 3D</button>
-    <button data-clip="motiv_2d">For 4D, 2D queries break the chain</button>
-    <button data-clip="motiv_3d">3D queries chain across chunks</button>
-  </span>
-
-  <p class="idea-sub" id="idea-caption">Long 3D reconstruction chunks the video and aligns the pieces — can 4D chain the same way?</p>
-  <div class="media" id="idea-stage" style="background:#fff;">
-    <video id="idea-video" src="assets/videos/motiv_long3d.mp4" autoplay muted playsinline></video>
-  </div>
-</section>
-
-<!-- ═══════════════ 4. METHOD ═══════════════ -->
+<!-- ═══════════════ 2. METHOD ═══════════════ -->
 <section id="method">
   <h2>Method: Training <img class="h-logo" src="assets/branding/point4d_title.svg" alt="Point4D"></h2>
 
@@ -347,7 +325,7 @@
 
 </section>
 
-<!-- ═══════════════ 5. RESULTS ═══════════════ -->
+<!-- ═══════════════ 3. RESULTS ═══════════════ -->
 <section id="results">
   <h2>Results</h2>
 
@@ -448,7 +426,7 @@
   </div>
 </section>
 
-<!-- ═══════════════ 6. GALLERY ═══════════════ -->
+<!-- ═══════════════ 4. GALLERY ═══════════════ -->
 <section id="gallery">
   <h2>Interactive 4D Viewer</h2>
   <div class="media" style="margin-top:14px;background:#fff;border:1px solid var(--border);">
@@ -574,29 +552,6 @@
       document.getElementById('lv-chart').src = `assets/figures/longvideo_${btn.dataset.ds}.png`;
     }));
 
-  // Key Idea: three clips behind three tabs
-  (function () {
-    const tabs = document.getElementById('idea-tabs');
-    const vid = document.getElementById('idea-video');
-    const cap = document.getElementById('idea-caption');
-    if (!tabs || !vid) return;
-    const captions = {
-      motiv_long3d: 'Long 3D reconstruction chunks the video and aligns the pieces — can 4D chain the same way?',
-      motiv_2d: 'Prior 4D methods query 2D pixels, and fail to chain occluded points.',
-      motiv_3d: 'Point4D queries the predicted 3D point directly, chaining the track through occlusion.',
-    };
-    tabs.addEventListener('click', e => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      tabs.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      const next = 'assets/videos/' + b.dataset.clip + '.mp4';
-      // re-selecting the same tab replays it from the start
-      if (vid.getAttribute('src') === next) vid.currentTime = 0;
-      else vid.setAttribute('src', next);
-      vid.play().catch(() => {});
-      cap.textContent = captions[b.dataset.clip];
-    });
-  })();
 
   // per-subsection qualitative/quantitative mini tabs
   document.querySelectorAll('.minitabs').forEach(mt => {
