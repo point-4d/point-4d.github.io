@@ -561,9 +561,9 @@
   wireVideoControls(document.getElementById('overview-player'));
 
   setupCarousel('#sc-carousel', ['dog', 'bear', 'stroller'], 2);
-  setupCarousel('#lv-carousel', ['long_corridor', 'long_rhino', 'long_bouldering_2',
-                                 'long_robot_dog', 'long_robot_walk'], 1,
-                { controls: true, labels: ['SpaTrackerV2', '4RC', 'Point4D (Ours)'] });
+  setupCarousel('#lv-carousel', ['long_corridor', 'long_active_exploration',
+                                 'long_rhino', 'long_bouldering'], 1,
+                { controls: true, labels: ['Any4D', '4RC', 'Point4D (Ours)'] });
 
   // long-video quantitative: dataset toggle swaps the chart image
   document.querySelectorAll('#lv-dataset button').forEach(btn =>
